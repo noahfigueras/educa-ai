@@ -5,16 +5,36 @@ import { Document } from "langchain/document";
 //import { fromPath } from "pdf2pic";
 
 const files = [ 
-  "./content/Educa6.pdf",
-  "./content/Educa7.pdf",
-  "./content/Educa8.pdf",
-  "./content/Educa9.pdf",
-  "./content/Educa10.pdf",
-  "./content/Educa11.pdf",
-  "./content/Educa12.pdf",
-  "./content/Educa13.pdf",
-  "./content/Educa16.pdf",
-  "./content/Under18.pdf"
+  "./content/educaU18/Educa6.pdf",
+  "./content/educaU18/Educa7.pdf",
+  "./content/educaU18/Educa8.pdf",
+  "./content/educaU18/Educa9.pdf",
+  "./content/educaU18/Educa10.pdf",
+  "./content/educaU18/Educa11.pdf",
+  "./content/educaU18/Educa12.pdf",
+  "./content/educaU18/Educa13.pdf",
+  "./content/educaU18/Educa16.pdf",
+  "./content/educaU18/Under18.pdf",
+  "./content/padreEntrenador/padreEntrenador_6-7.pdf",
+  "./content/padreEntrenador/padreEntrenador_8-9.pdf",
+  "./content/padreEntrenador/padreEntrenador_10-11.pdf",
+  "./content/padreEntrenador/padreEntrenador_12-13.pdf",
+  "./content/Verano/Verano6-7.pdf",
+  "./content/Verano/Verano8-9.pdf",
+  "./content/Verano/Verano10-11.pdf",
+  "./content/Verano/Verano12-13.pdf",
+  //"./content/Verano/VeranoCompeticion12-13.pdf",  hex values heree!!
+  "./content/AdultosAutodidacta/AdultosIniciacion.pdf",
+  "./content/AdultosAutodidacta/AdultosPerfeccionamiento.pdf",
+  "./content/AdultosAutodidacta/AdultosTecnificacion.pdf",
+  "./content/AdultosAutodidacta/AdultosCompeticion.pdf",
+  "./content/AdultosCoach/AdultosIniciacion.pdf",
+  "./content/AdultosCoach/AdultosPerfeccionamiento.pdf",
+  "./content/AdultosCoach/AdultosTecnificacion.pdf",
+  "./content/AdultosCoach/AdultosCompeticion.pdf",
+  "./content/ATP/ATP_WTA_Indoor.pdf",
+  "./content/ATP/ATP_WTA_Rapida.pdf",
+  "./content/ATP/ATP_WTA_Tierra.pdf",
 ];
 
 const embeddings = new OpenAIEmbeddings({
@@ -41,12 +61,45 @@ async function run() {
 
 function parseDocument(doc: Document[]) {
   const vector = [];
+  let ageGroup;
+  let coach;
   let sectionType = "introduccion";
-  const matchAge = doc[0].pageContent.match(/(?:GRUPO:\s*|EDAD:\s*|ETAPA\s+)(.*?)(?:\s+TEMPORADA|$)/i);
-  const ageGroup = matchAge ? matchAge[1].trim() : null;
+  
+  // Match Group
+  let matchAge = doc[0].pageContent.match(/(?:GRUPO:\s*|EDAD:\s*|ETAPA\s+)(.*?)(?:\s+TEMPORADA|$)/i);
+  if(matchAge) {
+    ageGroup = matchAge[1].trim();
+  } else if(matchAge = doc[0].pageContent.match(/(\d+)-(\d+)\s*AÑOS/))  {
+    ageGroup = matchAge[0].trim();
+  } else {
+    const autodidactaMatch = doc[0].pageContent
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .match(
+        /ADULTOS(?:\s+AUTODIDACTA)?\s+(?:(["“«<]{1,2})([A-ZÑ\s]+)(?:["”»>]{1,2})|([A-ZÑ\s]+))/
+    );
+    if (autodidactaMatch) {
+      const extracted = autodidactaMatch[2] || autodidactaMatch[3];
+      ageGroup = `ADULTOS ${extracted.trim()}`;
+    }
+  }
 
+  // Match court type for ATP
+  if(doc[0].metadata.source.includes("ATP")) {
+    const match = doc[0].metadata.source.match(/([^/]+)\.pdf$/);
+    ageGroup = match ? match[1] : null;
+  }
 
-  for(let i = 0; i < 5; i++) {
+  // Match Coach Type Based on source
+  if(doc[0].metadata.source.includes("padreEntrenador")) {
+    coach = "parent";
+  } else if(doc[0].metadata.source.includes("Autodidacta")) {
+    coach = "player";
+  } else {
+    coach = "coach";
+  }
+
+  for(let i = 0; i < doc.length; i++) {
     const d = doc[i];
     let week, day, topic, imageRef;
     const isTrainingPlan = false;
@@ -80,6 +133,7 @@ function parseDocument(doc: Document[]) {
     vector.push(new Document({
       pageContent: d.pageContent.split('\n').filter(line => line.length > 0).join('/n'),
       metadata: {
+        coach,
         ageGroup,
         sectionType,
         week,

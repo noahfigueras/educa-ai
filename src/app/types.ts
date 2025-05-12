@@ -10,7 +10,7 @@ export type Chat = {
 };
 
 export type UserInfo = {
-  age: number;
+  ageGroup: string;
   userType: CoachRole;
 }
 

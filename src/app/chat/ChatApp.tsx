@@ -16,6 +16,7 @@ export default function ChatApp() {
   const [chat, setChat] = useState<Map<number, Chat>>(new Map());
 
   const [userType, setUserType] = useState<string>("");
+  const [coachType, setCoachType] = useState<string>("coach");
   const [ageGroup, setAgeGroup] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -123,25 +124,78 @@ export default function ChatApp() {
               </p>
               <Select value={userType} onValueChange={setUserType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="I am a..." />
+                  <SelectValue placeholder="A quien entrenas..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="coach">Coach</SelectItem>
-                  <SelectItem value="player">Player</SelectItem>
-                  <SelectItem value="parent">Parent</SelectItem>
+                  <SelectItem value="jovenes">Jovenes</SelectItem>
+                  <SelectItem value="adultos">Adultos</SelectItem>
+                  <SelectItem value="professionales">Professionales</SelectItem>
                 </SelectContent>
               </Select>
 
-              <Select value={ageGroup} onValueChange={setAgeGroup}>
+
+              { userType == "jovenes" && (
+              <>
+              <Select value={coachType} onValueChange={setCoachType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Plyaer age" />
+                  <SelectValue placeholder="Soy un..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: 13 }, (_, i) => 5 + i).map((age) => (
-                    <SelectItem key={age} value={String(age)}>{age} años</SelectItem>
+                  <SelectItem value="coach">Entrenador</SelectItem>
+                  <SelectItem value="parent">Padre</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={ageGroup} onValueChange={setAgeGroup}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Edad del Jugador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 13 }, (_, i) => 6 + i).map((age) => (
+                    <SelectItem key={age} value={`${String(age)} AÑOS`}>{age} años</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              </>
+              )}
+
+              { userType == "adultos" && (
+              <>
+              <Select value={coachType} onValueChange={setCoachType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Soy un..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="coach">Entrenador</SelectItem>
+                  <SelectItem value="player">Jugador</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={ageGroup} onValueChange={setAgeGroup}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Nivel del jugador" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ADULTOS INICIACION">Iniciación</SelectItem>
+                  <SelectItem value="ADULTOS PERFECCIONAMIENTO">Perfeccionamiento</SelectItem>
+                  <SelectItem value="ADULTOS TECNIFICACIÓN">Tecnificación</SelectItem>
+                  <SelectItem value="ADULTOS COMPETICIÓN">Competición</SelectItem>
+                </SelectContent>
+              </Select>
+              </>
+              )}
+
+              { userType == "professionales" && (
+              <Select value={ageGroup} onValueChange={setAgeGroup}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tipo de juego" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ATP_WTA_Tierra">Pista de Tierra Batida</SelectItem>
+                  <SelectItem value="ATP_WTA_Rapida">Pista Dura</SelectItem>
+                  <SelectItem value="ATP_WTA_Indoor">Pista Indoor / Hierba</SelectItem>
+                </SelectContent>
+              </Select>
+              )}
+
               <p className="text-gray-700">
                Prepárate para descubrir ejercicios, consejos técnico-tácticos y planificación según tu etapa de desarrollo.
               </p>
@@ -151,7 +205,7 @@ export default function ChatApp() {
 
               <Button
                 className="w-full"
-                disabled={!userType || !ageGroup }
+                disabled={!coachType || !ageGroup }
                 onClick={() => {
                   const id = selectedChatId == 0 ? Date.now() : selectedChatId;
                   const _chat: Chat = {
@@ -161,8 +215,8 @@ export default function ChatApp() {
                       text: `¡Gracias! Como puedo ayudarte con tus entrenamientos de tenis.`,
                     }],
                     userInfo: {
-                      userType: userType as CoachRole,
-                      age: Number(ageGroup) 
+                      userType: coachType as CoachRole,
+                      ageGroup: ageGroup 
                     }
                   };
                   updateChats(_chat);

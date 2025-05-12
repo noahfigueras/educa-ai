@@ -7,7 +7,7 @@ import { StateGraph } from "@langchain/langgraph";
 import { Document } from "@langchain/core/documents";
 import { Annotation } from "@langchain/langgraph";
 import { z } from "zod";
-import type { UserInfo } from "@/app/types";
+//import type { UserInfo } from "@/app/types";
 
 const llm = new ChatOpenAI({
   temperature: 0,
@@ -28,30 +28,32 @@ const vectorStore = new Chroma(embeddings, {
 
 // Prompt Templating
 const SYSTEM_PROMPT = `
-Eres un entrenador de tenis experto con años de experiencia en el desarrollo de 
-jugadores de todos los niveles, desde iniciación hasta alto rendimiento. 
-Tu función es ayudar a los entrenadores humanos a planificar y mejorar sus 
-sesiones de entrenamiento.
+Eres un asistente de entrenamiento profesional de tenis basado únicamente en los 
+contenidos del programa EDUCA TENNIS desarrollado por Joel Figueras Torras. 
 
-  Tu conocimiento incluye:
-  - Principios técnico-tácticos del tenis.
-  - Preparación física y mental adaptada por edad y nivel.
-  - Ejercicios variados (situacionales, progresivos, lúdicos, analíticos, etc.).
-  - Programación de sesiones por trimestre, semana y día.
-  - Adaptación de contenidos en función de la edad, nivel y objetivos del jugador o grupo.
+Tu función principal es generar sesiones de entrenamiento o responder preguntas 
+usando exclusivamente la información textual exacta encontrada en los documentos 
+proporcionados en el contexto proporcionado. 
 
-  Utiliza siempre el contexto que se te proporciona, incluyendo ejercicios y objetivos técnicos o tácticos. 
+No debes resumir, parafrasear, completar con conocimientos propios ni inventar 
+ejercicios. Siempre responde utilizando literalmente los ejercicios, actividades, 
+nombres, y descripciones tal como aparecen en el programa original.
 
-  Tu estilo debe ser claro, directo y profesional.
-  Si no tiene suficient informacion para responder, siempre pregunta al usuario que sea mas especifico con la edad, objetivo del entrenamiento, tiempos, etc.
+Cuando un usuario solicita una sesión, debes extraer el contenido directamente 
+del programa y estructurarlo en el siguiente formato:
 
-  Nunca inventes ejercicios o datos que no aparezcan en el contexto del contenido. 
-  Si un ejercicio o sesión no está explícitamente en el contexto no lo sugieras nunca. 
+- **Número de Sesión**: [número]
+- **Número de Semana**: [número]
+- **Contenidos Para Trabajar**: [extraído literalmente]
+- **Tiempo Total de la Sesión**: [minutos]
+- **Parte Inicial**: [nombre, descripcion y duración de cada ejercicio]
+- **Parte Principal**: [nombre, descripcion y duración de cada ejercicio] (Esta Parte Principal incluyen todos los ejercicios entre PARTE PRINCIPAL y PARTE FINAL) 
+- **Parte Final**: [nombre, descripcion y duración de cada ejercicio]
 
-  Tu objetivo es que el entrenador humano pueda entender mejor los conceptos, 
-  organizar sus entrenamientos, proponer ejercicios y obtener ideas efectivas para sus sesiones.
+Si el usuario solicita múltiples sesiones (por ejemplo, una semana completa), 
+proporciona todas las sesiones con esa estructura.
 
-  Contexto: {context}
+Contexto: {context}
 `;
 
 const promptTemplate = ChatPromptTemplate.fromMessages([
@@ -83,33 +85,69 @@ const searchSchema = z.object({
     "11 AÑOS",
     "12 AÑOS",
     "13 AÑOS",
-    "14 AÑOS",
-    "15 AÑOS",
     "16 AÑOS",
-    "17 AÑOS",
-    "18 AÑOS",
-  ]).describe("Age to query."),
+    "ALTO RENDIMIENTO JUVENIL",
+    "ADULTOS INICIACION",
+    "ADULTOS PERFECCIONAMIENTO",
+    "ADULTOS TECNIFICACIÓN",
+    "ADULTOS COMPETICIÓN",
+    "ATP_WTA_Tierra",
+    "ATP_WTA_Rapida",
+    "ATP_WTA_Indoor",
+  ]).describe("Usa '16 AÑOS' para edades 14, 15 y 16; y 'ALTO RENDIMIENTO JUVENIL' para edades 17 y 18."),
+  coach: z.enum([
+    "coach", 
+    "player",
+    "parent",
+  ]).describe("Use of coach type")
 });
 
 const structuredLlm = llm.withStructuredOutput(searchSchema);
 
 // Node1 - Query Analysis
 const analyzeQuery = async (state: typeof InputStateAnnotation.State) => {
+  console.log(state.question);
   const result = await structuredLlm.invoke(state.question);
+  console.log(result);
   return { search: result };
 };
 
 // Node2 - Retrieval of Embeddings
 const retrieve = async (state: typeof StateAnnotation.State) => {
-  //const filter = (doc: any) => doc.metadata.ageGroup === state.search.ageGroup;
+  const group = state.search.ageGroup;
+  let coach = state.search.coach;
+  const filterGroups: string[] = [state.search.ageGroup];
+  if(group == "6 AÑOS" || group == "7 AÑOS") {
+    filterGroups.push("6-7 AÑOS");
+  } else if(group == "8 AÑOS" || group == "9 AÑOS") {
+    filterGroups.push("8-9 AÑOS");
+  } else if(group == "10 AÑOS" || group == "11 AÑOS") {
+    filterGroups.push("10-11 AÑOS");
+  } else if(group == "12 AÑOS" || group == "13 AÑOS") {
+    filterGroups.push("12-13 AÑOS");
+  } else if(group == "16 AÑOS" || group == "ALTO RENDIMIENTO JUVENIL") {
+    coach = "coach"; 
+  }
+      
+  const filter: any = {
+    "$and": [
+      { "ageGroup": { "$in": filterGroups } },
+      { "coach": coach }
+    ]
+  };
+  console.log(filter);
+  console.log(filterGroups);
+  try {
   const retrievedDocs = await vectorStore.similaritySearch(
     state.search.query,
-    2,
-    {
-      ageGroup: state.search.ageGroup
-    }
+    5,
+    filter
   );
+  console.log(retrievedDocs);
   return { context: retrievedDocs };
+  } catch(err: any) {
+    console.log(err)
+  }
 }
 
 // Node3 - Prompt Generation
@@ -138,8 +176,9 @@ export async function POST(req: Request) {
   if (!question) return NextResponse.json({ error: 'Missing question' }, { status: 400 });
 
   try { 
-    const age = String(userInfo.age);
-    const query = `${question}.EDAD: ${age}`;
+    const group = userInfo.ageGroup;
+    const coach = userInfo.userType;
+    const query = `${question}.GRUPO: ${group}, COACH: ${coach}`;
     const result = await graph.invoke({question: query});
     return NextResponse.json({answer: result.answer});
   } catch(error: any) {
