@@ -2,7 +2,7 @@ import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { Chroma } from "@langchain/community/vectorstores/chroma";
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { Document } from "langchain/document";
-//import { fromPath } from "pdf2pic";
+import { fromPath } from "pdf2pic";
 
 const files = [ 
   "./content/educaU18/Educa6.pdf",
@@ -63,8 +63,8 @@ function parseDocument(doc: Document[]) {
   const vector = [];
   let ageGroup;
   let coach;
-  let sectionType = "introduccion";
-  
+  let sectionType 
+
   // Match Group
   let matchAge = doc[0].pageContent.match(/(?:GRUPO:\s*|EDAD:\s*|ETAPA\s+)(.*?)(?:\s+TEMPORADA|$)/i);
   if(matchAge) {
@@ -99,12 +99,17 @@ function parseDocument(doc: Document[]) {
     coach = "coach";
   }
 
+  // Filter training sessions and conceptual concepts
   for(let i = 0; i < doc.length; i++) {
     const d = doc[i];
     let week, day, topic, imageRef;
-    const isTrainingPlan = false;
-    if (d.pageContent.includes("2- TEMPORIZACIÓN Y DESARROLLO CONCEPTUAL DE LOS CONTENIDOS")) {
-      sectionType = "entrenamiento";
+    if (d.pageContent.includes("ENTRENADOR:") && d.pageContent.includes("FECHA:")) {
+      sectionType = "session";
+      const fileName = `ficha-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+      convertPdf2Pic(fileName, d.metadata.loc.pageNumber, doc[0].metadata.source);
+      imageRef = `${fileName}.${d.metadata.loc.pageNumber}.png`;
+    } else {
+      sectionType = "conceptual";
     }     
 
     /*
@@ -139,7 +144,6 @@ function parseDocument(doc: Document[]) {
         week,
         day,
         topic,
-        isTrainingPlan,
         imageRef
       }
     }));
@@ -148,8 +152,7 @@ function parseDocument(doc: Document[]) {
   return vector;
 }
 
-/*
-function convertPdf2Pic(fileName, page) {
+function convertPdf2Pic(fileName: string, page: number, source: string) {
   const options = { 
     density: 150,           // DPI (higher = better quality)
     saveFilename: fileName,   // Base filename
@@ -159,8 +162,8 @@ function convertPdf2Pic(fileName, page) {
     height: 1754            // A4 height at 150 DPI
   };
 
-  const convert = fromPath(pdfFile, options);
+  const convert = fromPath(source, options);
   convert(page);
-}*/
+}
 
 run();
