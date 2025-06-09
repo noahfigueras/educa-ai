@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Menu, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import type { Chat, CoachRole } from "@/app/types";
 
 export default function ChatApp() {
@@ -75,10 +77,10 @@ export default function ChatApp() {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800">EducaAi</h1>
           <button onClick={() => setSidebarOpen(false)}>
-            <X />
+            <X className="cursor-pointer"/>
           </button>
         </div>
-        <Button className="w-full" onClick={startNewChat}>New Chat</Button>
+        <Button className="w-full cursor-pointer" onClick={startNewChat}>New Chat</Button>
         <div className="space-y-2">
           {[...chat.entries()].map(([, chat]) => (
             <div
@@ -88,7 +90,7 @@ export default function ChatApp() {
                 setSelectedChatId(chat.id);
               }}
             >
-              Chat {chat.id}
+              {chat.name}
             </div>
           ))}
         </div>
@@ -100,7 +102,7 @@ export default function ChatApp() {
           <div className="flex items-center gap-2">
             {!sidebarOpen && (
               <button onClick={() => setSidebarOpen(true)}>
-                <Menu />
+                <Menu className="cursor-pointer"/>
               </button>
             )}
           </div>
@@ -210,6 +212,7 @@ export default function ChatApp() {
                   const id = selectedChatId == 0 ? Date.now() : selectedChatId;
                   const _chat: Chat = {
                     id: id,
+                    name: ageGroup,
                     messages: [{
                       sender: "ai",
                       text: `¡Gracias! Como puedo ayudarte con tus entrenamientos de tenis.`,
@@ -232,8 +235,41 @@ export default function ChatApp() {
                 key={i}
                 className={`p-2 rounded max-w-lg ${msg.sender === "user" ? "bg-blue-200 self-end ml-auto" : "bg-gray-200"}`}
               >
-                <div className="prose prose-sm sm:prose-base max-w-none">
-                <ReactMarkdown>{msg.text}</ReactMarkdown>
+                <div className="prose prose-sm sm:prose-base overflow-x-auto max-w-screen-xl">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}
+                    components={{
+                      h1: ({node, ...props}) => <h1 className="text-3xl font-bold mt-6 mb-2" {...props} />,
+                      h2: ({node, ...props}) => <h2 className="text-2xl font-semibold mt-5 mb-2" {...props} />,
+                      h3: ({node, ...props}) => <h3 className="text-xl font-semibold mt-4 mb-2" {...props} />,
+                      table: ({node, ...props}) => (
+                        <table className="min-w-full border border-gray-300 shadow-sm my-4 text-sm text-left">
+                          {props.children}
+                        </table>
+                      ),
+                      thead: ({node, ...props}) => (
+                        <thead className="bg-gray-100 text-gray-700 font-semibold border-b border-gray-300">
+                          {props.children}
+                        </thead>
+                      ),
+                      tr: ({node, ...props}) => (
+                        <tr className="border-b border-gray-200 hover:bg-gray-50">
+                          {props.children}
+                        </tr>
+                      ),
+                      th: ({node, ...props}) => (
+                        <th className="px-4 py-2 border-r last:border-r-0">
+                          {props.children}
+                        </th>
+                      ),
+                      td: ({node, ...props}) => (
+                        <td className="px-4 py-2 border-r last:border-r-0">
+                          {props.children}
+                        </td>
+                      ),
+                      }}
+                >
+                {msg.text}
+                </ReactMarkdown>
                 </div>
               </div>
             ))}
@@ -251,7 +287,7 @@ export default function ChatApp() {
             placeholder="Type your message..."
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           />
-          <Button onClick={sendMessage}>Send</Button>
+          <Button className="cursor-pointer" onClick={sendMessage}>Send</Button>
         </div>
       </div>
     </div>

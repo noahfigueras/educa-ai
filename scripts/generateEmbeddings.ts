@@ -3,38 +3,40 @@ import { Chroma } from "@langchain/community/vectorstores/chroma";
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { Document } from "langchain/document";
 import { fromPath } from "pdf2pic";
+import cv from '@u4/opencv4nodejs';
+import sharp from 'sharp';
 
 const files = [ 
-  "./content/educaU18/Educa6.pdf",
-  "./content/educaU18/Educa7.pdf",
-  "./content/educaU18/Educa8.pdf",
-  "./content/educaU18/Educa9.pdf",
-  "./content/educaU18/Educa10.pdf",
-  "./content/educaU18/Educa11.pdf",
-  "./content/educaU18/Educa12.pdf",
-  "./content/educaU18/Educa13.pdf",
-  "./content/educaU18/Educa16.pdf",
-  "./content/educaU18/Under18.pdf",
-  "./content/padreEntrenador/padreEntrenador_6-7.pdf",
-  "./content/padreEntrenador/padreEntrenador_8-9.pdf",
-  "./content/padreEntrenador/padreEntrenador_10-11.pdf",
-  "./content/padreEntrenador/padreEntrenador_12-13.pdf",
-  "./content/Verano/Verano6-7.pdf",
-  "./content/Verano/Verano8-9.pdf",
-  "./content/Verano/Verano10-11.pdf",
-  "./content/Verano/Verano12-13.pdf",
-  //"./content/Verano/VeranoCompeticion12-13.pdf",  hex values heree!!
-  "./content/AdultosAutodidacta/AdultosIniciacion.pdf",
-  "./content/AdultosAutodidacta/AdultosPerfeccionamiento.pdf",
-  "./content/AdultosAutodidacta/AdultosTecnificacion.pdf",
-  "./content/AdultosAutodidacta/AdultosCompeticion.pdf",
-  "./content/AdultosCoach/AdultosIniciacion.pdf",
-  "./content/AdultosCoach/AdultosPerfeccionamiento.pdf",
-  "./content/AdultosCoach/AdultosTecnificacion.pdf",
-  "./content/AdultosCoach/AdultosCompeticion.pdf",
-  "./content/ATP/ATP_WTA_Indoor.pdf",
-  "./content/ATP/ATP_WTA_Rapida.pdf",
-  "./content/ATP/ATP_WTA_Tierra.pdf",
+  "./content/es/educaU18/Educa6.pdf",
+  "./content/es/educaU18/Educa7.pdf",
+  "./content/es/educaU18/Educa8.pdf",
+  "./content/es/educaU18/Educa9.pdf",
+  "./content/es/educaU18/Educa10.pdf",
+  "./content/es/educaU18/Educa11.pdf",
+  "./content/es/educaU18/Educa12.pdf",
+  "./content/es/educaU18/Educa13.pdf",
+  "./content/es/educaU18/Educa16.pdf",
+  "./content/es/educaU18/Under18.pdf",
+  "./content/es/padreEntrenador/padreEntrenador_6-7.pdf",
+  "./content/es/padreEntrenador/padreEntrenador_8-9.pdf",
+  "./content/es/padreEntrenador/padreEntrenador_10-11.pdf",
+  "./content/es/padreEntrenador/padreEntrenador_12-13.pdf",
+  "./content/es/Verano/Verano6-7.pdf",
+  "./content/es/Verano/Verano8-9.pdf",
+  "./content/es/Verano/Verano10-11.pdf",
+  "./content/es/Verano/Verano12-13.pdf",
+  //"./content/es/Verano/VeranoCompeticion12-13.pdf",  hex values heree!!
+  "./content/es/AdultosAutodidacta/AdultosIniciacion.pdf",
+  "./content/es/AdultosAutodidacta/AdultosPerfeccionamiento.pdf",
+  "./content/es/AdultosAutodidacta/AdultosTecnificacion.pdf",
+  "./content/es/AdultosAutodidacta/AdultosCompeticion.pdf",
+  "./content/es/AdultosCoach/AdultosIniciacion.pdf",
+  "./content/es/AdultosCoach/AdultosPerfeccionamiento.pdf",
+  "./content/es/AdultosCoach/AdultosTecnificacion.pdf",
+  "./content/es/AdultosCoach/AdultosCompeticion.pdf",
+  "./content/es/ATP/ATP_WTA_Indoor.pdf",
+  "./content/es/ATP/ATP_WTA_Rapida.pdf",
+  "./content/es/ATP/ATP_WTA_Tierra.pdf",
 ];
 
 const embeddings = new OpenAIEmbeddings({
@@ -100,18 +102,19 @@ function parseDocument(doc: Document[]) {
   }
 
   // Filter training sessions and conceptual concepts
+  const id = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
   for(let i = 0; i < doc.length; i++) {
     const d = doc[i];
-    let week, day, topic, imageRef;
+    let week, day, topic, imageRef, vectorRef;
     if (d.pageContent.includes("ENTRENADOR:") && d.pageContent.includes("FECHA:")) {
       sectionType = "session";
-      const fileName = `ficha-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-      convertPdf2Pic(fileName, d.metadata.loc.pageNumber, doc[0].metadata.source);
+      const fileName = `ficha-${id}`;
+      convertPdf2Pic(fileName, d.metadata.loc.pageNumber, doc[0].metadata.source, id);
       imageRef = `${fileName}.${d.metadata.loc.pageNumber}.png`;
+      vectorRef = `vector-${id}-${d.metadata.loc.pageNumber}`;
     } else {
       sectionType = "conceptual";
     }     
-
     /*
     if(sectionType != "introduccion") {
       const days = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
@@ -144,7 +147,8 @@ function parseDocument(doc: Document[]) {
         week,
         day,
         topic,
-        imageRef
+        imageRef,
+        vectorRef
       }
     }));
   }
@@ -152,7 +156,7 @@ function parseDocument(doc: Document[]) {
   return vector;
 }
 
-function convertPdf2Pic(fileName: string, page: number, source: string) {
+function convertPdf2Pic(fileName: string, page: number, source: string, id: string) {
   const options = { 
     density: 150,           // DPI (higher = better quality)
     saveFilename: fileName,   // Base filename
@@ -163,7 +167,67 @@ function convertPdf2Pic(fileName: string, page: number, source: string) {
   };
 
   const convert = fromPath(source, options);
-  convert(page);
+  convert(page).then(async (resolve) => {
+    //extractVectorGraphics(resolve.path as string, resolve.page as number, id as string);
+    cropImage(resolve.path as string, resolve.page as number, id as string);
+  });
+}
+
+const cropImage = async (imgPath: string, pageNumber: number, id: string) => {
+  const nameOut = `./images/vector-${id}-${pageNumber}.png`;
+  await sharp(imgPath)
+  .extract({
+    left: 868,
+    top: 200,
+    width: 350,
+    height: 1400 
+  })
+  .toFile(nameOut);
+}
+
+const extractVectorGraphics = async (imgPath: string, pageNumber: number, id: string) => {
+  const buffer = await sharp(imgPath)
+    .extract({
+      left: 868,
+      top: 200,
+      width: 350,
+      height: 1400 
+    })
+    .toBuffer();
+
+  const image = cv.imdecode(buffer).bgrToGray();
+  const blurred = image.gaussianBlur(new cv.Size(5,5), 0);
+  const thresh = blurred.threshold(200, 255, cv.THRESH_BINARY);
+  const contours = thresh.findContours(cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+  
+  const rectangles: any = [];
+  for (const contour of contours) {
+    const epsilon = 0.05 * contour.arcLength(true);
+    const approx = contour.approxPolyDP(epsilon, true);
+
+    if(approx.length == 4) {
+      const rect = contour.boundingRect();
+      if(rect.height > 100 && rect.height < 1000) {
+        rectangles.push(rect);
+      }
+    }
+  }
+  // Sort by top position (y) to mantain vertical order
+  rectangles.sort((a: any,b: any) => a.y - b.y);
+
+  let count = 0;
+  for (const rect of rectangles) {
+    const nameOut = `./images/vector-${id}-${pageNumber}-${count}.png`;
+    await sharp(buffer)
+      .extract({
+        left: rect.x,
+        top: rect.y,
+        width: rect.width,
+        height: rect.height 
+      })
+      .toFile(nameOut);
+    count++;
+  }
 }
 
 run();

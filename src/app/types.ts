@@ -5,6 +5,7 @@ export type Message = {
 
 export type Chat = {
     id: number;
+    name: string;
     messages: Message[];
     userInfo?: UserInfo;
 };
