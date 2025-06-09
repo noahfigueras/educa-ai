@@ -60,7 +60,7 @@ export default function ChatApp() {
   };
 
   const startNewChat = () => {
-    const newChat = { id: Date.now(), messages: [] };
+    const newChat = { id: Date.now(), name: "", messages: [] };
     updateChats(newChat);
     setSelectedChatId(newChat.id);
   };
