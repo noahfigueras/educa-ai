@@ -9,6 +9,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import type { Chat, CoachRole } from "@/app/types";
+import { content } from "@/app/chat/content";
 
 export default function ChatApp() {
   const [input, setInput] = useState<string>("");
@@ -21,6 +22,7 @@ export default function ChatApp() {
   const [coachType, setCoachType] = useState<string>("coach");
   const [ageGroup, setAgeGroup] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [language, setLanguage] = useState<string>('es');
 
   const updateChats = (_chat: Chat) => {
     const newMap = new Map(chat);
@@ -29,8 +31,9 @@ export default function ChatApp() {
     setSelectedChatId(_chat.id);
   };
 
-  const sendMessage = async () => {
-    if (!input.trim()) return;
+  const sendMessage = async (overrideInput?: string) => {
+    const message = overrideInput ?? input;
+    if (!message.trim()) return;
     const currentChat = chat.get(selectedChatId);
     if(!currentChat || !currentChat.userInfo) return;
 
@@ -42,13 +45,13 @@ export default function ChatApp() {
       const response = await fetch('api/chat', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({question: input, userInfo: currentChat.userInfo })
+        body: JSON.stringify({question: message, userInfo: currentChat.userInfo })
       });
       const data = await response.json();
       
       // Update message_history
       currentChat.messages.push(
-          { sender: "user", text: input }, 
+          { sender: "user", text: message }, 
           { sender: "ai", text: data.answer}
       );
       updateChats(currentChat);
@@ -65,13 +68,25 @@ export default function ChatApp() {
     setSelectedChatId(newChat.id);
   };
 
+  const handleLanguageChange = (value: 'es' | 'en') => {
+    setLanguage(value);
+    localStorage.setItem('lang', value);
+  };
+
   useEffect(() => {
     const _chat = chat.get(selectedChatId);
     if(_chat) setSelectedChat(_chat);
-  }, [selectedChatId, chat]);
+    const savedLang = localStorage.getItem('lang');
+    if (savedLang === 'es' || savedLang === 'en') {
+      setLanguage(savedLang);
+    } else {
+      setLanguage('en');
+    }
+  }, [selectedChatId, chat, language]);
 
   return (
     <div className="flex h-screen">
+
       {/* Sidebar */}
       <div className={`bg-gray-100 w-64 p-4 space-y-4 border-r ${sidebarOpen ? "block" : "hidden"}`}>
         <div className="flex justify-between items-center">
@@ -80,7 +95,7 @@ export default function ChatApp() {
             <X className="cursor-pointer"/>
           </button>
         </div>
-        <Button className="w-full cursor-pointer" onClick={startNewChat}>New Chat</Button>
+        <Button className="w-full cursor-pointer" onClick={startNewChat}>{content[language].sidebar}</Button>
         <div className="space-y-2">
           {[...chat.entries()].map(([, chat]) => (
             <div
@@ -99,6 +114,7 @@ export default function ChatApp() {
       {/* Chat Section */}
       <div className="flex-1 flex flex-col">
         <div className="p-2 border-b flex items-center justify-between">
+
           <div className="flex items-center gap-2">
             {!sidebarOpen && (
               <button onClick={() => setSidebarOpen(true)}>
@@ -106,32 +122,35 @@ export default function ChatApp() {
               </button>
             )}
           </div>
+
+          {/* Language selector fixed at top-right */}
+          <div className="top-4 right-4">
+            <Select value={language} onValueChange={handleLanguageChange}>
+              <SelectTrigger className="w-20 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="es">🇪🇸 ES</SelectItem>
+                <SelectItem value="en">🇬🇧 EN</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
          { !selectedChat || !selectedChat.userInfo ? (
             <div className="space-y-4 max-w-sm mx-auto mt-10">
-              <h2 className="text-xl font-semibold text-center">
-                🎾 Bienvenido a EducaAI, tu asistente de entrenamiento de tenis.
-              </h2>
-              <p className="text-gray-800 text-center">
-                Tu asistente de entrenamiento de tenis.
-              </p>
-              <p className="text-gray-700">
-                Estoy aquí para ayudarte a planificar y mejorar tus sesiones de entrenamiento, ya seas <strong>entrenador</strong>, <strong>jugador</strong> o <strong>padre</strong>.
-              </p>
-              <p className="text-gray-700">
-               👉 Antes de comenzar, selecciona tu rol y la edad del jugador. Esto me permitirá darte respuestas personalizadas y adaptadas a tu nivel y necesidades.
-              </p>
+              {content[language].welcome}
               <Select value={userType} onValueChange={setUserType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="A quien entrenas..." />
+                  <SelectValue placeholder={content[language].placeholderPlayer} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="jovenes">Jovenes</SelectItem>
-                  <SelectItem value="adultos">Adultos</SelectItem>
-                  <SelectItem value="professionales">Professionales</SelectItem>
+                  <SelectItem value="jovenes">{content[language].optionsPlayer.youth}</SelectItem>
+                  <SelectItem value="adultos">{content[language].optionsPlayer.adults}</SelectItem>
+                  <SelectItem value="professionales">{content[language].optionsPlayer.professionals}</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -140,20 +159,20 @@ export default function ChatApp() {
               <>
               <Select value={coachType} onValueChange={setCoachType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Soy un..." />
+                  <SelectValue placeholder={content[language].placeholderCoach} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="coach">Entrenador</SelectItem>
-                  <SelectItem value="parent">Padre</SelectItem>
+                  <SelectItem value="coach">{content[language].optionsCoach.coach}</SelectItem>
+                  <SelectItem value="parent">{content[language].optionsCoach.parent}</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={ageGroup} onValueChange={setAgeGroup}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Edad del Jugador" />
+                  <SelectValue placeholder={content[language].placeholderAge} />
                 </SelectTrigger>
                 <SelectContent>
                   {Array.from({ length: 13 }, (_, i) => 6 + i).map((age) => (
-                    <SelectItem key={age} value={`${String(age)} AÑOS`}>{age} años</SelectItem>
+                    <SelectItem key={age} value={`${String(age)} AÑOS`}>{age} {content[language].age}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -164,22 +183,22 @@ export default function ChatApp() {
               <>
               <Select value={coachType} onValueChange={setCoachType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Soy un..." />
+                  <SelectValue placeholder={content[language].placeholderCoach} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="coach">Entrenador</SelectItem>
-                  <SelectItem value="player">Jugador</SelectItem>
+                  <SelectItem value="coach">{content[language].optionsCoach.coach}</SelectItem>
+                  <SelectItem value="parent">{content[language].optionsCoach.parent}</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={ageGroup} onValueChange={setAgeGroup}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Nivel del jugador" />
+                  <SelectValue placeholder={content[language].placeholderAdults} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ADULTOS INICIACION">Iniciación</SelectItem>
-                  <SelectItem value="ADULTOS PERFECCIONAMIENTO">Perfeccionamiento</SelectItem>
-                  <SelectItem value="ADULTOS TECNIFICACIÓN">Tecnificación</SelectItem>
-                  <SelectItem value="ADULTOS COMPETICIÓN">Competición</SelectItem>
+                  <SelectItem value="ADULTOS INICIACION">{content[language].optionsAdult.beginner}</SelectItem>
+                  <SelectItem value="ADULTOS PERFECCIONAMIENTO">{content[language].optionsAdult.intermediate}</SelectItem>
+                  <SelectItem value="ADULTOS TECNIFICACIÓN">{content[language].optionsAdult.advanced}</SelectItem>
+                  <SelectItem value="ADULTOS COMPETICIÓN">{content[language].optionsAdult.competition}</SelectItem>
                 </SelectContent>
               </Select>
               </>
@@ -188,25 +207,20 @@ export default function ChatApp() {
               { userType == "professionales" && (
               <Select value={ageGroup} onValueChange={setAgeGroup}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Tipo de juego" />
+                  <SelectValue placeholder={content[language].placeholderATP} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ATP_WTA_Tierra">Pista de Tierra Batida</SelectItem>
-                  <SelectItem value="ATP_WTA_Rapida">Pista Dura</SelectItem>
-                  <SelectItem value="ATP_WTA_Indoor">Pista Indoor / Hierba</SelectItem>
+                  <SelectItem value="ATP_WTA_Tierra">{content[language].optionsATP.clay}</SelectItem>
+                  <SelectItem value="ATP_WTA_Rapida">{content[language].optionsATP.hard}</SelectItem>
+                  <SelectItem value="ATP_WTA_Indoor">{content[language].optionsATP.indoor}</SelectItem>
                 </SelectContent>
               </Select>
               )}
 
-              <p className="text-gray-700">
-               Prepárate para descubrir ejercicios, consejos técnico-tácticos y planificación según tu etapa de desarrollo.
-              </p>
-              <p className="text-center font-semibold text-green-800">
-               ¡Comencemos!
-              </p>
+              {content[language].end}
 
               <Button
-                className="w-full"
+                className="w-full cursor-pointer"
                 disabled={!coachType || !ageGroup }
                 onClick={() => {
                   const id = selectedChatId == 0 ? Date.now() : selectedChatId;
@@ -215,7 +229,7 @@ export default function ChatApp() {
                     name: ageGroup,
                     messages: [{
                       sender: "ai",
-                      text: `¡Gracias! Como puedo ayudarte con tus entrenamientos de tenis.`,
+                      text: content[language].startIntro,
                     }],
                     userInfo: {
                       userType: coachType as CoachRole,
@@ -225,7 +239,7 @@ export default function ChatApp() {
                   updateChats(_chat);
                 }}
               >
-                Start Chat
+              {content[language].startChat}
               </Button>
             </div>
           ) : (
@@ -233,10 +247,29 @@ export default function ChatApp() {
             {selectedChat.messages.map((msg, i) => (
               <div
                 key={i}
-                className={`p-2 rounded max-w-lg ${msg.sender === "user" ? "bg-blue-200 self-end ml-auto" : "bg-gray-200"}`}
+                className={`p-2 rounded  mx-auto ${msg.sender === "user" ? "bg-blue-200 max-w-lg" : "max-w-2xl"}`}
               >
                 <div className="prose prose-sm sm:prose-base overflow-x-auto max-w-screen-xl">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}
+                {selectedChat.messages.length === 1 ? 
+                <>
+                  <div className="text-center space-y-4 max-w-xl mx-auto py-10">
+                    <p className="text-gray-700">
+                      {msg.text}
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {content[language].suggestions.map((suggestion:string , i: any) => (
+                        <button
+                          key={i}
+                          onClick={() => {sendMessage(suggestion)}} // your function to send this
+                          className="bg-muted hover:bg-muted/80 text-sm px-4 py-2 rounded-md border shadow-sm transition cursor-pointer"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+                : (<ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}
                     components={{
                       h1: ({node, ...props}) => <h1 className="text-3xl font-bold mt-6 mb-2" {...props} />,
                       h2: ({node, ...props}) => <h2 className="text-2xl font-semibold mt-5 mb-2" {...props} />,
@@ -270,6 +303,8 @@ export default function ChatApp() {
                 >
                 {msg.text}
                 </ReactMarkdown>
+                )
+                }
                 </div>
               </div>
             ))}
@@ -280,14 +315,16 @@ export default function ChatApp() {
 
         {/* Input */}
         <div className="p-4 border-t flex gap-2">
+          <div className="flex gap-2 max-w-2xl w-full mx-auto">
           <Input
             className="flex-1"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
+            placeholder={content[language].typeMessage}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           />
           <Button className="cursor-pointer" onClick={sendMessage}>Send</Button>
+          </div>
         </div>
       </div>
     </div>

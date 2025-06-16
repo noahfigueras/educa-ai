@@ -49,7 +49,7 @@ del programa y estructurarlo en el siguiente formato:
 - **Número de Sesión**: [número]
 - **Número de Semana**: [número]
 - **Contenidos Para Trabajar**: [extraído literalmente]
-- **Tiempo Total de la Sesión**: [Pueden haber diferentes tiempos, extrae todos]
+- **Tiempo Total de la Sesión**: [Por defecto extrae los tiempos de la session de 2 horas, salvo que el usuario te pida una session con un tiempo total differente o la session solo tenga una opcion de 1 hora ]
 
 ## PARTE [Inicial, Principal, Final] 
 
@@ -196,7 +196,20 @@ const generate = async (state: typeof StateAnnotation.State) => {
   // Translate if needed
   if(state.search.language != "spa") {
     const messages = [
-      { role: "system", content: `You are a translator. Translate the following Spanish text to "${state.search.language}" without changing the meaning.` },
+      { 
+        role: "system", 
+        content: `You are a translator. Translate the following Spanish text to "${state.search.language}" 
+          without changing the meaning. This text is part of a tennis training program, so always use correct tennis-specific terminology used by coaches and players. 
+          Do not translate word-for-word if it results in incorrect tennis terms.
+            
+          Examples:
+          - "paralelo" → "down the line"
+          - "cruzado" → "cross-court"
+          - "dejada" → "drop shot"
+          - "resto" → "return"
+          - "peloteo" → "rally"
+        ` 
+      },
       { role: "user", content: response.content }
     ];
     response = await llm.invoke(messages);
