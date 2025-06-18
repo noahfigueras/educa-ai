@@ -33,6 +33,7 @@ export default function ChatApp() {
 
   const sendMessage = async (overrideInput?: string) => {
     const message = overrideInput ?? input;
+    console.log(input)
     if (!message.trim()) return;
     const currentChat = chat.get(selectedChatId);
     if(!currentChat || !currentChat.userInfo) return;
@@ -274,6 +275,11 @@ export default function ChatApp() {
                       h1: ({node, ...props}) => <h1 className="text-3xl font-bold mt-6 mb-2" {...props} />,
                       h2: ({node, ...props}) => <h2 className="text-2xl font-semibold mt-5 mb-2" {...props} />,
                       h3: ({node, ...props}) => <h3 className="text-xl font-semibold mt-4 mb-2" {...props} />,
+                      hr: ({node, ...props}) => (
+                        <hr className="my-8 border-t border-gray-300" {...props} />
+                      ),
+                      li: ({ children }) => <li className="list-disc ml-6">{children}</li>,
+                      ul: ({ children }) => <ul className="mb-4">{children}</ul>,
                       table: ({node, ...props}) => (
                         <table className="min-w-full border border-gray-300 shadow-sm my-4 text-sm text-left">
                           {props.children}
@@ -323,7 +329,7 @@ export default function ChatApp() {
             placeholder={content[language].typeMessage}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           />
-          <Button className="cursor-pointer" onClick={sendMessage}>Send</Button>
+          <Button className="cursor-pointer" onClick={() => sendMessage()}>Send</Button>
           </div>
         </div>
       </div>

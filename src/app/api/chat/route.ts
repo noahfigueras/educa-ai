@@ -12,7 +12,7 @@ import { franc } from 'franc';
 
 const llm = new ChatOpenAI({
   temperature: 0,
-  modelName: "gpt-4o-mini", // or "gpt-3.5-turbo"
+  modelName: "gpt-4o", // or "gpt-3.5-turbo"
   streaming: true,
 });
 const embeddings = new OpenAIEmbeddings({
@@ -46,8 +46,8 @@ del programa y responder al usuario con los contenidos proporcionados en context
 Si el usuario solicita una sesión, debes extraer el contenido directamente 
 del programa y estructurarlo en el siguiente formato:
 
-- **Número de Sesión**: [número]
-- **Número de Semana**: [número]
+- **Número de Sesión**: [extraer numero de sesion]
+- **Número de Semana**: [extraer numero de semana]
 - **Contenidos Para Trabajar**: [extraído literalmente]
 - **Tiempo Total de la Sesión**: [Por defecto extrae los tiempos de la session de 2 horas, salvo que el usuario te pida una session con un tiempo total differente o la session solo tenga una opcion de 1 hora ]
 
@@ -66,10 +66,26 @@ del programa y estructurarlo en el siguiente formato:
 ---
 
 Si el usuario solicita múltiples sesiones (por ejemplo, una semana completa), 
-proporciona todas las sesiones con esa estructura.
+proporciona todas las sesiones con esta estructura. Todas las sessiones estan 
+estructuradas por numero de session y semana, como ejemplo las 4 primeras sesiones 
+serian: 
+
+1. Session: 1 - Semana: 1 
+2. Session: 2: - Semana: 1 
+3. Session: 1 - Semana 2
+4. Session: 2 - Semana: 2
+
+Si el usuario te pide las sessiones de una semana en concreta, como por ejemplo 
+la semana 1. El resultado serian todas las sessiones de la Semana: 1.
+
+Si el usuario te pide una o varias sessiones especificas, siempre devuelve las 
+sessiones que te pida. 
 
 Si el usuario solicita solo ejercicios, actividades o juegos, proporciona solo 
 el ejercicio o los ejercicios mas apropiados en contexto. 
+
+Siempre, devuelve el resultado con formato markdown, sin cambiar la letra y detecta
+y añade los titulos, subtitulos, emphasis en negrita y puntos de enumeracion necessarios.
 
 Contexto: {context}
 `;
@@ -168,7 +184,7 @@ const retrieve = async (state: typeof StateAnnotation.State) => {
     5,
     filter
   );
-  //console.log(retrievedDocs);
+  console.log(retrievedDocs);
   return { context: retrievedDocs };
   } catch(err: any) {
     console.log(err)
@@ -186,12 +202,21 @@ const generate = async (state: typeof StateAnnotation.State) => {
       : "";
       return `${imageMarkdown}${vectorMarkdown}${doc.pageContent}`;
   }).join("\n\n");
-  const docsContent = state.context.map((doc) => doc.pageContent).join("\n");
+  //const docsContent = state.context.map((doc) => doc.pageContent).join("\n");
+  let response = await llm.invoke([
+    { 
+      role: "system", 
+      content: `
+        Format all the content to markdown
+      ` 
+    },
+    { role: "user", content: contextWithImages }
+  ]);
   const messages = await promptTemplate.invoke({
     question: state.question,
-    context: contextWithImages,
+    context: response.content,
   });
-  let response = await llm.invoke(messages);
+  response = await llm.invoke(messages);
 
   // Translate if needed
   if(state.search.language != "spa") {
@@ -208,6 +233,9 @@ const generate = async (state: typeof StateAnnotation.State) => {
           - "dejada" → "drop shot"
           - "resto" → "return"
           - "peloteo" → "rally"
+
+          It's very important that you keep the same structure of the content, do not
+          modify, delete or altere images.
         ` 
       },
       { role: "user", content: response.content }

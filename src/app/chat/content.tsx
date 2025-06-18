@@ -1,4 +1,4 @@
-export const content = {
+export const content: any = {
   es: {
     sidebar: "Nuevo Chat",
     welcome: (
@@ -54,13 +54,14 @@ export const content = {
       </>
     ),
     startChat: "Comenzar chat",
-    startIntro: "¡Hola! Aquí puedo ayudarte en crear tus sesiones de entreno para tus jugadores.",
+    startIntro: "¡Hola! Aquí puedo ayudarte en crear tus sesiones de entreno para tus jugadores. Aquí van algunas sugerencias:",
     suggestions: [
-        "Quiero una sesión de entrenamiento de 2 horas, enfocando los CONTENIDOS DE TENIS PARA TRABAJAR: golpe de derecha en posición estática",
-        "Quiero varias sesiones de entreno de 2 horas que desarrollen los CONTENIDOS DE TENIS PARA TRABAJAR: golpe de derecha",
-        "Quiero ver las primeras 4 semanas (de la 1 a la 4) dentro de una planificación anual progresiva de 36 semana",
-      ],
-      placeHolderMessageSend: "Escribe tu mensaje..."
+      "¿Cuáles son los objetivos técnico-tácticos de este programa?",
+      "Proponme varios ejercicios para mejorar el juego de fondo",
+      "¿Puedes proporcionarme todas las sesiones de la primera semana?",
+      "¿Puedes explicarme la técnica del golpe de derecha?"
+    ],
+    placeHolderMessageSend: "Escribe tu mensaje..."
   },
   en: {
     sidebar: "New Chat",
@@ -119,12 +120,13 @@ export const content = {
     ),
     startChat: "Start Chat",
     placeHolderMessageSend: "Type your message here...",
-    startIntro: "Hi! I'm here to help you create training sessions for your players.",
+    startIntro: "Hi! I'm here to help you create training sessions for your players. Below are some suggestions:",
     suggestions: [
-          "I want a 2-hour training session focused on the CONTENTS TO BE WORKED ON: BASIC STROKES (FOREHAND STROKE IN STATIC POSITION)",
-          "I want several 2-hour training sessions that develop the CONTENTS TO BE WORKED ON: BASIC STROKES (FOREHAND STROKE)",
-          "I want to see the first 4 weeks (weeks 1 through 4) within a progressive 36-week annual plan.",
-        ]
+     "What are the technical-tactical objectives of this program?",
+     "Suggest several exercises to improve baseline play",
+     "Provide all the sessions for the first week",
+     "Explain the forehand technique"
+    ]
   },
 };
 
