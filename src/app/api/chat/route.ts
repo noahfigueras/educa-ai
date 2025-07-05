@@ -140,7 +140,12 @@ const searchSchema = z.object({
     `Classify the query intent:
       - Use "session" if the user is asking for a specific training plan, exercises, session details, weekly programs, or any practice-oriented content (e.g. "Dame una sesión para mejorar mi saque", "Ejercicios para volea").
       - Use "conceptual" if the user is asking about tennis theory, technique explanations, training principles, or general advice (e.g. "¿Qué es la anticipación en tenis?", "¿Cómo mejorar la concentración?", "¿Cuántas sesiones debe entrenar un jugador profesional en una semana?").`
-  )
+  ),
+  dates: z.object({ 
+    trimester: z.number(), 
+    week: z.number(), 
+    session: z.number() 
+  }).describe("Detects the number of trimester, week and session the user is asking to get the sessions. The sessions can be numbers or days of the week Ex: 1,2,3 or day of the week kkl")
 });
 
 const structuredLlm = llm.withStructuredOutput(searchSchema);
@@ -154,19 +159,24 @@ const analyzeQuery = async (state: typeof InputStateAnnotation.State) => {
 
 // Node2 - Retrieval of Embeddings
 const retrieve = async (state: typeof StateAnnotation.State) => {
-  const group = state.search.ageGroup;
-  const questionType = state.search.questionType;
+  const {
+    ageGroup,
+    questionType,
+    dates,
+  } = state.search
   let coach = state.search.coach;
-  const filterGroups: string[] = [state.search.ageGroup];
-  if(group == "6 AÑOS" || group == "7 AÑOS") {
+  const filterGroups: string[] = [ageGroup];
+
+  // Include mixed group programs
+  if(ageGroup == "6 AÑOS" || ageGroup == "7 AÑOS") {
     filterGroups.push("6-7 AÑOS");
-  } else if(group == "8 AÑOS" || group == "9 AÑOS") {
+  } else if(ageGroup == "8 AÑOS" || ageGroup == "9 AÑOS") {
     filterGroups.push("8-9 AÑOS");
-  } else if(group == "10 AÑOS" || group == "11 AÑOS") {
+  } else if(ageGroup == "10 AÑOS" || ageGroup == "11 AÑOS") {
     filterGroups.push("10-11 AÑOS");
-  } else if(group == "12 AÑOS" || group == "13 AÑOS") {
+  } else if(ageGroup == "12 AÑOS" || ageGroup == "13 AÑOS") {
     filterGroups.push("12-13 AÑOS");
-  } else if(group == "16 AÑOS" || group == "ALTO RENDIMIENTO JUVENIL") {
+  } else if(ageGroup == "16 AÑOS" || ageGroup == "ALTO RENDIMIENTO JUVENIL") {
     coach = "coach"; 
   }
       
@@ -174,25 +184,35 @@ const retrieve = async (state: typeof StateAnnotation.State) => {
     "$and": [
       { "ageGroup": { "$in": filterGroups } },
       { "coach": coach },
-      { "sectionType": questionType}
+      { "sectionType": questionType},
+      ...(dates.trimester > 0 ? [{"trimester": dates.trimester}] : []),
+      ...(dates.week > 0 ? [{"week": dates.week}] : []),
     ]
   };
-  console.log(filter);
+
   try {
-  const retrievedDocs = await vectorStore.similaritySearch(
-    state.search.query,
-    5,
-    filter
-  );
-  console.log(retrievedDocs);
-  return { context: retrievedDocs };
+     let retrievedDocs = await vectorStore.similaritySearch(
+      state.search.query,
+      16,
+      filter
+    );
+
+    if(dates.trimester || dates.week) {
+      // Order sessions and limits
+      retrievedDocs = retrievedDocs
+        .sort((a,b) => a.metadata.week - b.metadata.week);
+    }
+
+    // TODO: Consider limiting the results here.
+    return { context: retrievedDocs };
   } catch(err: any) {
-    console.log(err)
+    throw new Error("Failed to filter results in database.");
   }
 }
 
 // Node3 - Prompt Generation
 const generate = async (state: typeof StateAnnotation.State) => {
+  /*
   const contextWithImages = state.context.map((doc, index) => {
     const imageMarkdown = doc.metadata?.imageRef
       ? `![Ficha](${doc.metadata.imageRef})\n`
@@ -241,8 +261,8 @@ const generate = async (state: typeof StateAnnotation.State) => {
       { role: "user", content: response.content }
     ];
     response = await llm.invoke(messages);
-  }
-  return {answer: response.content };
+  }*/
+  return {answer: /*response.content*/"lol" };
 }
 
 const graph = new StateGraph(StateAnnotation)
