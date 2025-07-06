@@ -57,9 +57,11 @@ export const content: any = {
     startIntro: "¡Hola! Aquí puedo ayudarte en crear tus sesiones de entreno para tus jugadores. Aquí van algunas sugerencias:",
     suggestions: [
       "¿Cuáles son los objetivos técnico-tácticos de este programa?",
-      "Proponme varios ejercicios para mejorar el juego de fondo",
-      "¿Puedes proporcionarme todas las sesiones de la primera semana?",
-      "¿Puedes explicarme la técnica del golpe de derecha?"
+      "Proporcióname los objetivos del primer trimestre.",
+      "Quiero ver las 3 primeras sesiones del primer trimestre.",
+      "Muéstrame la segunda sesión del segundo trimestre.",
+      "¿Qué significa trayectoria parabólica?",
+      "Dame ejercicios de coordinación óculo-manual."
     ],
     placeHolderMessageSend: "Escribe tu mensaje..."
   },
@@ -123,9 +125,11 @@ export const content: any = {
     startIntro: "Hi! I'm here to help you create training sessions for your players. Below are some suggestions:",
     suggestions: [
      "What are the technical-tactical objectives of this program?",
-     "Suggest several exercises to improve baseline play",
-     "Provide all the sessions for the first week",
-     "Explain the forehand technique"
+     "Give me the objectives of the first trimester.",
+     "I want to see the first 3 sessions of the first trimester.",
+     "Show me the second session of the second trimester.",
+     "What does 'parabolic trajectory' mean?",
+     "Give me exercises for eye-hand coordination."
     ]
   },
 };

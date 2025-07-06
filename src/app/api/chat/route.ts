@@ -134,18 +134,19 @@ const searchSchema = z.object({
     "player",
     "parent",
   ]).describe("Use of coach type"),
-  language: z.string().describe("Extrae lenguage del query 'LANGUAGE: <codigo_idioma>'"),
+  language: z.enum(["spa","en"]).describe('Detects language if spanish returns "spa" otherwise returns "en"'),
   questionType: z.enum(["session", "conceptual"])
   .describe(
     `Classify the query intent:
       - Use "session" if the user is asking for a specific training plan, exercises, session details, weekly programs, or any practice-oriented content (e.g. "Dame una sesión para mejorar mi saque", "Ejercicios para volea").
-      - Use "conceptual" if the user is asking about tennis theory, technique explanations, training principles, or general advice (e.g. "¿Qué es la anticipación en tenis?", "¿Cómo mejorar la concentración?", "¿Cuántas sesiones debe entrenar un jugador profesional en una semana?").`
+      - Use "conceptual" if the user is asking about tennis theory, technique explanations, training principles, objectives, or general advice (e.g. "¿Qué es la anticipación en tenis?", "¿Cómo mejorar la concentración?", "¿Cuántas sesiones debe entrenar un jugador profesional en una semana?", "¿Cuales son los objetivos tecnicos a trabajar en la primera semana?").`
   ),
   dates: z.object({ 
-    trimester: z.number(), 
-    week: z.number(), 
-    session: z.number() 
-  }).describe("Detects the number of trimester, week and session the user is asking to get the sessions. The sessions can be numbers or days of the week Ex: 1,2,3 or day of the week kkl")
+    trimester: z.number().describe("Trimester number requested by the user, defaults to 1 if not provided"), 
+    week: z.number().describe("Week number of the session requested by the user, defaults to 0 if not mentioned"), 
+    session: z.number().describe("Specific session number if mentioned, defaults to 0 if not mentioned"), 
+    limit: z.number().describe("Maximum number of sessions requested, e.g., 'first 5 sessions', 'first 5 weeks' would set limit to 5, defaults to 0 if not mentioned")
+  }).describe("Detects the number of trimester, week and session the user is asking to get the sessions.")
 });
 
 const structuredLlm = llm.withStructuredOutput(searchSchema);
@@ -198,12 +199,22 @@ const retrieve = async (state: typeof StateAnnotation.State) => {
     );
 
     if(dates.trimester || dates.week) {
-      // Order sessions and limits
-      retrievedDocs = retrievedDocs
-        .sort((a,b) => a.metadata.week - b.metadata.week);
+      // Order sessions
+      const sorted = retrievedDocs
+        .sort((a,b) => a.metadata.week - b.metadata.week)
+
+      // Add limits
+      retrievedDocs = dates.limit as number > 0 
+        ? sorted.slice(0, dates.limit) 
+        : sorted;
+
+      // Specific session
+      if(dates.session > 0) {
+        retrievedDocs = retrievedDocs
+          .filter(s => s.metadata.session == dates.session);
+      }
     }
 
-    // TODO: Consider limiting the results here.
     return { context: retrievedDocs };
   } catch(err: any) {
     throw new Error("Failed to filter results in database.");
@@ -212,6 +223,14 @@ const retrieve = async (state: typeof StateAnnotation.State) => {
 
 // Node3 - Prompt Generation
 const generate = async (state: typeof StateAnnotation.State) => {
+  const docsContent = state.context
+    .map((doc) => {
+      if(doc.metadata.sectionType == "session") {
+        const header = `## Trimestre: ${doc.metadata.trimester} | Semana: ${doc.metadata.week} | Session: ${doc.metadata.session}\n\n`;
+        return header.concat(doc.pageContent);
+      }
+      return doc.pageContent;
+    }).join("\n\n---\n\n");
   /*
   const contextWithImages = state.context.map((doc, index) => {
     const imageMarkdown = doc.metadata?.imageRef
@@ -230,13 +249,14 @@ const generate = async (state: typeof StateAnnotation.State) => {
         Format all the content to markdown
       ` 
     },
-    { role: "user", content: contextWithImages }
+    { role: "user", content: docsContent }
   ]);
+  */
   const messages = await promptTemplate.invoke({
     question: state.question,
-    context: response.content,
+    context: docsContent,
   });
-  response = await llm.invoke(messages);
+  let response = await llm.invoke(messages);
 
   // Translate if needed
   if(state.search.language != "spa") {
@@ -261,8 +281,8 @@ const generate = async (state: typeof StateAnnotation.State) => {
       { role: "user", content: response.content }
     ];
     response = await llm.invoke(messages);
-  }*/
-  return {answer: /*response.content*/"lol" };
+  }
+  return {answer: response.content };
 }
 
 const graph = new StateGraph(StateAnnotation)
@@ -282,8 +302,9 @@ export async function POST(req: Request) {
   try { 
     const group = userInfo.ageGroup;
     const coach = userInfo.userType;
-    const lang = franc(question, { only: ['spa', 'eng'] });
-    const query = `${question}, GRUPO: ${group}, COACH: ${coach}, LANGUAGE: ${lang}`;
+    //const lang = franc(question, { only: ['spa', 'eng'] });
+    const query = `${question}, GRUPO: ${group}, COACH: ${coach}`;
+    console.log(query);
     const result = await graph.invoke({question: query});
     return NextResponse.json({answer: result.answer});
   } catch(error: any) {
