@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LoadingBubble } from "@/components/ui/LoadingBubble";
+import { MarkDown } from "@/components/markdown";
+import { Introduction } from "@/components/introduction";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Menu, X } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
 import type { Chat, CoachRole } from "@/app/types";
 import { content } from "@/app/chat/content";
 
@@ -62,6 +62,7 @@ export default function ChatApp() {
       setLoading(false);
     }
   };
+
 
   const startNewChat = () => {
     const newChat = { id: Date.now(), name: "", messages: [] };
@@ -252,63 +253,9 @@ export default function ChatApp() {
               >
                 <div className="prose prose-sm sm:prose-base overflow-x-auto max-w-screen-xl">
                 {selectedChat.messages.length === 1 ? 
-                <>
-                  <div className="text-center space-y-4 max-w-xl mx-auto py-10">
-                    <p className="text-gray-700">
-                      {msg.text}
-                    </p>
-                    <div className="flex flex-wrap justify-center gap-2">
-                      {content[language].suggestions.map((suggestion:string , i: any) => (
-                        <button
-                          key={i}
-                          onClick={() => {sendMessage(suggestion)}} // your function to send this
-                          className="bg-muted hover:bg-muted/80 text-sm px-4 py-2 rounded-md border shadow-sm transition cursor-pointer"
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-                : (<ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}
-                    components={{
-                      h1: ({node, ...props}) => <h1 className="text-3xl font-bold mt-6 mb-2" {...props} />,
-                      h2: ({node, ...props}) => <h2 className="text-2xl font-semibold mt-5 mb-2" {...props} />,
-                      h3: ({node, ...props}) => <h3 className="text-xl font-semibold mt-4 mb-2" {...props} />,
-                      hr: ({node, ...props}) => (
-                        <hr className="my-8 border-t border-gray-300" {...props} />
-                      ),
-                      li: ({ children }) => <li className="list-disc ml-6">{children}</li>,
-                      ul: ({ children }) => <ul className="mb-4">{children}</ul>,
-                      table: ({node, ...props}) => (
-                        <table className="min-w-full border border-gray-300 shadow-sm my-4 text-sm text-left">
-                          {props.children}
-                        </table>
-                      ),
-                      thead: ({node, ...props}) => (
-                        <thead className="bg-gray-100 text-gray-700 font-semibold border-b border-gray-300">
-                          {props.children}
-                        </thead>
-                      ),
-                      tr: ({node, ...props}) => (
-                        <tr className="border-b border-gray-200 hover:bg-gray-50">
-                          {props.children}
-                        </tr>
-                      ),
-                      th: ({node, ...props}) => (
-                        <th className="px-4 py-2 border-r last:border-r-0">
-                          {props.children}
-                        </th>
-                      ),
-                      td: ({node, ...props}) => (
-                        <td className="px-4 py-2 border-r last:border-r-0">
-                          {props.children}
-                        </td>
-                      ),
-                      }}
-                >
-                {msg.text}
-                </ReactMarkdown>
+                  <Introduction chat={selectedChat} sendMessage={sendMessage}/>
+                : (
+                  <MarkDown text={msg.text} />
                 )
                 }
                 </div>
@@ -337,12 +284,3 @@ export default function ChatApp() {
   );
 }
 
-const LoadingBubble = () => {
-  return (
-    <div className="flex space-x-1 items-center p-2 rounded-xl bg-gray-200 w-fit">
-      <span className="h-2 w-2 bg-gray-600 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-      <span className="h-2 w-2 bg-gray-600 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-      <span className="h-2 w-2 bg-gray-600 rounded-full animate-bounce"></span>
-    </div>
-  );
-};
