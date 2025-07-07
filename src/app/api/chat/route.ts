@@ -30,7 +30,7 @@ const vectorStore = new Chroma(embeddings, {
 // Prompt Templating
 const SYSTEM_PROMPT = `
 Eres un asistente de entrenamiento profesional de tenis basado únicamente en los 
-contenidos del programa EDUCA TENNIS desarrollado por Joel Figueras Torras. 
+contenidos del programa Educa Tennis. 
 
 Tu función principal es generar sesiones de entrenamiento o responder preguntas 
 conceptuales usando exclusivamente la información textual exacta encontrada en 
@@ -46,34 +46,10 @@ del programa y responder al usuario con los contenidos proporcionados en context
 Si el usuario solicita una sesión, debes extraer el contenido directamente 
 del programa y estructurarlo en el siguiente formato:
 
-- **Número de Sesión**: [extraer numero de sesion]
-- **Número de Semana**: [extraer numero de semana]
-- **Contenidos Para Trabajar**: [extraído literalmente]
-- **Tiempo Total de la Sesión**: [Por defecto extrae los tiempos de la session de 2 horas, salvo que el usuario te pida una session con un tiempo total differente o la session solo tenga una opcion de 1 hora ]
-
-## PARTE [Inicial, Principal, Final] 
-
-- **Duración**: [duración la parte en minutos]
-
-### Ejercicio [Número del ejercicio]
-- **Etapa**: [TIPO DE EJERCICIO en mayúsculas al principio de la descripción]
-- **Descripción**: [descripción]
-  
-[Grafico de explicacion de los ejercicios solo un grafico por entrenamiento]
-## Graficos Explicativos
-![Vector](/images/<url_vector>.png)
-
 ---
 
 Si el usuario solicita múltiples sesiones (por ejemplo, una semana completa), 
-proporciona todas las sesiones con esta estructura. Todas las sessiones estan 
-estructuradas por numero de session y semana, como ejemplo las 4 primeras sesiones 
-serian: 
-
-1. Session: 1 - Semana: 1 
-2. Session: 2: - Semana: 1 
-3. Session: 1 - Semana 2
-4. Session: 2 - Semana: 2
+proporciona todas las sesiones que detectes en la semana especificada. Todas las sessiones estan estructuradas por trimestre, semana y session.
 
 Si el usuario te pide las sessiones de una semana en concreta, como por ejemplo 
 la semana 1. El resultado serian todas las sessiones de la Semana: 1.
@@ -84,8 +60,15 @@ sessiones que te pida.
 Si el usuario solicita solo ejercicios, actividades o juegos, proporciona solo 
 el ejercicio o los ejercicios mas apropiados en contexto. 
 
-Siempre, devuelve el resultado con formato markdown, sin cambiar la letra y detecta
-y añade los titulos, subtitulos, emphasis en negrita y puntos de enumeracion necessarios.
+Siempre, devuelve el resultado con formato markdown limipo, sin cambiar la letra.
+
+---
+
+Despues de la respuesta, siempre ayudas al usuario como guia para las siguientes 
+preguntas utilizando la pregunta en cuestion y el contexto utilizado. El objetivo 
+es mantener al usuario preguntando y tu tienes que guiarlo siempre sugeriendo nuevas
+sesiones, ejercicios o explicacion de conceptos dependiendo de lo que el usuario
+vaya preguntando.
 
 Contexto: {context}
 `;
@@ -181,6 +164,7 @@ const retrieve = async (state: typeof StateAnnotation.State) => {
     coach = "coach"; 
   }
       
+  dates.trimester = questionType == "session" ? dates.trimester : 0;
   const filter: any = {
     "$and": [
       { "ageGroup": { "$in": filterGroups } },
@@ -208,11 +192,6 @@ const retrieve = async (state: typeof StateAnnotation.State) => {
         ? sorted.slice(0, dates.limit) 
         : sorted;
 
-      // Specific session
-      if(dates.session > 0) {
-        retrievedDocs = retrievedDocs
-          .filter(s => s.metadata.session == dates.session);
-      }
     }
 
     return { context: retrievedDocs };
@@ -231,27 +210,7 @@ const generate = async (state: typeof StateAnnotation.State) => {
       }
       return doc.pageContent;
     }).join("\n\n---\n\n");
-  /*
-  const contextWithImages = state.context.map((doc, index) => {
-    const imageMarkdown = doc.metadata?.imageRef
-      ? `![Ficha](${doc.metadata.imageRef})\n`
-      : "";
-    const vectorMarkdown = doc.metadata?.imageRef
-      ? `![Vector](${doc.metadata.vectorRef})\n`
-      : "";
-      return `${imageMarkdown}${vectorMarkdown}${doc.pageContent}`;
-  }).join("\n\n");
-  //const docsContent = state.context.map((doc) => doc.pageContent).join("\n");
-  let response = await llm.invoke([
-    { 
-      role: "system", 
-      content: `
-        Format all the content to markdown
-      ` 
-    },
-    { role: "user", content: docsContent }
-  ]);
-  */
+
   const messages = await promptTemplate.invoke({
     question: state.question,
     context: docsContent,
@@ -296,15 +255,13 @@ const graph = new StateGraph(StateAnnotation)
 .compile();
 
 export async function POST(req: Request) {
-  const { question, userInfo } = await req.json();
+  const { question, userInfo, language } = await req.json();
   if (!question) return NextResponse.json({ error: 'Missing question' }, { status: 400 });
 
   try { 
     const group = userInfo.ageGroup;
     const coach = userInfo.userType;
-    //const lang = franc(question, { only: ['spa', 'eng'] });
-    const query = `${question}, GRUPO: ${group}, COACH: ${coach}`;
-    console.log(query);
+    const query = `${question}, GRUPO: ${group}, COACH: ${coach}, language: ${language}`;
     const result = await graph.invoke({question: query});
     return NextResponse.json({answer: result.answer});
   } catch(error: any) {

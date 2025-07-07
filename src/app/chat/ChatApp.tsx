@@ -22,7 +22,7 @@ export default function ChatApp() {
   const [coachType, setCoachType] = useState<string>("coach");
   const [ageGroup, setAgeGroup] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
-  const [language, setLanguage] = useState<string>('es');
+  const [language, setLanguage] = useState<string>('spa');
 
   const updateChats = (_chat: Chat) => {
     const newMap = new Map(chat);
@@ -33,7 +33,6 @@ export default function ChatApp() {
 
   const sendMessage = async (overrideInput?: string) => {
     const message = overrideInput ?? input;
-    console.log(input)
     if (!message.trim()) return;
     const currentChat = chat.get(selectedChatId);
     if(!currentChat || !currentChat.userInfo) return;
@@ -46,7 +45,11 @@ export default function ChatApp() {
       const response = await fetch('api/chat', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({question: message, userInfo: currentChat.userInfo })
+        body: JSON.stringify({
+          question: message, 
+          userInfo: currentChat.userInfo,
+          language
+        })
       });
       const data = await response.json();
       
@@ -70,7 +73,7 @@ export default function ChatApp() {
     setSelectedChatId(newChat.id);
   };
 
-  const handleLanguageChange = (value: 'es' | 'en') => {
+  const handleLanguageChange = (value: 'spa' | 'en') => {
     setLanguage(value);
     localStorage.setItem('lang', value);
   };
@@ -79,7 +82,7 @@ export default function ChatApp() {
     const _chat = chat.get(selectedChatId);
     if(_chat) setSelectedChat(_chat);
     const savedLang = localStorage.getItem('lang');
-    if (savedLang === 'es' || savedLang === 'en') {
+    if (savedLang === 'spa' || savedLang === 'en') {
       setLanguage(savedLang);
     } else {
       setLanguage('en');
@@ -132,7 +135,7 @@ export default function ChatApp() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="es">🇪🇸 ES</SelectItem>
+                <SelectItem value="spa">🇪🇸 ES</SelectItem>
                 <SelectItem value="en">🇬🇧 EN</SelectItem>
               </SelectContent>
             </Select>
@@ -253,7 +256,11 @@ export default function ChatApp() {
               >
                 <div className="prose prose-sm sm:prose-base overflow-x-auto max-w-screen-xl">
                 {selectedChat.messages.length === 1 ? 
-                  <Introduction chat={selectedChat} sendMessage={sendMessage}/>
+                  <Introduction 
+                    chat={selectedChat} 
+                    sendMessage={sendMessage}
+                    language={language}
+                  />
                 : (
                   <MarkDown text={msg.text} />
                 )

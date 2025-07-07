@@ -7,9 +7,14 @@ import { MarkDown } from "@/components/markdown";
 type IntroductionProps = {
   chat: Chat;
   sendMessage: (overrideInput?: string) => Promise<void>;
+  language: string;
 } 
 
-export const Introduction: React.FC<IntroductionProps> = ({ chat, sendMessage }) => {
+export const Introduction: React.FC<IntroductionProps> = ({ 
+  chat, 
+  sendMessage, 
+  language 
+}) => {
   const [text, setText] = useState<string>("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
@@ -19,7 +24,10 @@ export const Introduction: React.FC<IntroductionProps> = ({ chat, sendMessage })
       const response = await fetch('api/intro', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ ageGroup: chat.userInfo.ageGroup })
+        body: JSON.stringify({ 
+          ageGroup: chat.userInfo.ageGroup,
+          language: language
+        })
       });
       const { pageContent, suggestions } = await response.json();
       setText(pageContent);
@@ -40,9 +48,7 @@ export const Introduction: React.FC<IntroductionProps> = ({ chat, sendMessage })
     <>
       { text && suggestions &&
       <div className="space-y-4 max-w-xl mx-auto py-10">
-        <p className="text-gray-700">
-          <MarkDown text={text} />
-        </p>
+        <MarkDown text={text} />
         <div className="flex flex-wrap justify-center gap-2">
           {suggestions.map((suggestion:string , i: number) => (
             <button

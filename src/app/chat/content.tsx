@@ -1,5 +1,5 @@
 export const content: any = {
-  es: {
+  spa: {
     sidebar: "Nuevo Chat",
     welcome: (
       <>

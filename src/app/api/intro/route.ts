@@ -15,7 +15,7 @@ const vectorStore = new Chroma(embeddings, {
 });
 
 export async function POST(req: Request) {
-  const { ageGroup } = await req.json();
+  const { ageGroup, language } = await req.json();
   if (!ageGroup) return NextResponse.json({ error: 'Missing Program' }, { status: 400 });
   try {
     const intro = await vectorStore.similaritySearch(
@@ -30,10 +30,9 @@ export async function POST(req: Request) {
     );
 
     // Extract embedded suggestions []
-    const jsonMatch = intro[0].pageContent.match(/```json([\s\S]*?)```/);
-    const suggestions = jsonMatch ? JSON.parse(jsonMatch[1].trim()) : [];
-    const pageContent = intro[0].pageContent
-      .replace(/```json[\s\S]*?```/, "").trim();
+    const content = JSON.parse(intro[0].pageContent);
+    const pageContent = content[language];
+    const suggestions = content.suggestions[language];
 
     return NextResponse.json({
       pageContent,
